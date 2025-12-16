@@ -1,18 +1,8 @@
 require("dotenv").config();
+require("./register-commands");
+
 const fs = require("fs");
 const { Client, GatewayIntentBits, PermissionFlagsBits } = require("discord.js");
-
-/*
-  Learn Pomodoro
-  - No muting
-  - No voice control
-  - VC check only
-*/
-
-if (!process.env.TOKEN) {
-  console.error("❌ TOKEN missing");
-  process.exit(1);
-}
 
 const client = new Client({
   intents: [
@@ -43,12 +33,9 @@ client.once("ready", () => {
   });
 });
 
-function mustBeInVC(interaction) {
+function requireVC(interaction) {
   if (!interaction.member.voice.channel) {
-    interaction.reply({
-      content: "❌ Join a voice channel first.",
-      ephemeral: true
-    });
+    interaction.reply({ content: "❌ Join a voice channel first.", ephemeral: true });
     return false;
   }
   return true;
@@ -59,7 +46,7 @@ function startSession(interaction, minutes, label) {
   const start = Date.now();
 
   const timeout = setTimeout(() => {
-    interaction.channel.send(`⏰ <@${uid}> **${label} finished!**`);
+    interaction.channel.send(`⏰ <@${uid}> **${label} session ended**`);
     sessions.delete(uid);
     data.stats[uid] = (data.stats[uid] || 0) + minutes;
     save();
@@ -76,7 +63,7 @@ client.on("interactionCreate", async interaction => {
     return interaction.reply({
       ephemeral: true,
       content:
-`**Learn Pomodoro**
+`**Learn Pomodoro Commands**
 /pomodoro
 /timer
 /focus
@@ -92,11 +79,11 @@ client.on("interactionCreate", async interaction => {
   if (interaction.commandName === "afk") {
     data.afk[uid] = interaction.options.getString("reason") || "AFK";
     save();
-    return interaction.reply(`💤 AFK set`);
+    return interaction.reply("💤 You are now AFK");
   }
 
   if (["pomodoro", "timer", "focus"].includes(interaction.commandName)) {
-    if (!mustBeInVC(interaction)) return;
+    if (!requireVC(interaction)) return;
     if (sessions.has(uid)) {
       return interaction.reply({ content: "⏳ Session already running.", ephemeral: true });
     }
@@ -108,7 +95,7 @@ client.on("interactionCreate", async interaction => {
     await interaction.reply(`🍅 Pomodoro started (${study} min)`);
     startSession(interaction, study, "Study");
     setTimeout(() => {
-      interaction.channel.send(`☕ Break started (${brk} min)`);
+      interaction.channel.send(`☕ Break time (${brk} min)`);
     }, study * 60000);
   }
 
